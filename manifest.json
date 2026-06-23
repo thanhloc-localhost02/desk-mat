@@ -1,0 +1,15 @@
+{
+  "name": "Smart Desk Mat",
+  "short_name": "Desk Mat",
+  "description": "Bảng làm việc thông minh — sticky notes, focus timer, nhạc, remote điều khiển từ điện thoại.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#3d3d3a",
+  "theme_color": "#caa24a",
+  "orientation": "any",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
