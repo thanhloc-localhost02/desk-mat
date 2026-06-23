@@ -13,6 +13,9 @@
 <meta name="apple-mobile-web-app-title" content="Desk Mat">
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="icon" href="icon-192.png" type="image/png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
 <style>
 /* ===== RESET ===== */
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -56,9 +59,29 @@
   --phone-border:rgba(255,255,255,.12);
   --clock-face:#1c1c1e;
   --clock-stroke:rgba(255,255,255,.08);
+  --clock-tick:rgba(255,255,255,.45);
   --clock-hand:#ffffff;
   --clock-second:#ff453a;
   --panel-bg:rgba(28,28,30,.9);
+
+  /* --- shape / font / motion tokens --- */
+  --font-main:-apple-system,BlinkMacSystemFont,'SF Pro Text','SF Pro Display',Helvetica,Arial,sans-serif;
+  --radius-xs:8px;
+  --radius-sm:12px;
+  --radius-md:16px;
+  --radius-lg:20px;
+  --radius-xl:24px;
+  --radius-mat:22px;
+  --radius-pill:10px;          /* iOS16 buttons: rounded-rect, NOT full pill */
+  --note-rotate:0deg;
+  --panel-border-w:1px;
+  --btn-shape:var(--radius-pill);
+  --ease-spring:cubic-bezier(.34,1.56,.64,1);
+  --ease-smooth:cubic-bezier(.4,0,.2,1);
+  --glass-blur:20px;
+  --glass-blur-lg:34px;
+  --glass-sat:130%;
+  --mat-shadow:0 20px 60px rgba(0,0,0,.45);
 }
 
 /* iOS 16 Light */
@@ -99,205 +122,250 @@ body.theme-ios16light{
   --phone-border:rgba(0,0,0,.1);
   --clock-face:#ffffff;
   --clock-stroke:rgba(0,0,0,.08);
+  --clock-tick:rgba(0,0,0,.4);
   --clock-hand:#1c1c1e;
   --clock-second:#ff3b30;
   --panel-bg:rgba(255,255,255,.9);
+
+  --font-main:-apple-system,BlinkMacSystemFont,'SF Pro Text','SF Pro Display',Helvetica,Arial,sans-serif;
+  --radius-xs:8px;--radius-sm:12px;--radius-md:16px;--radius-lg:20px;--radius-xl:24px;--radius-mat:22px;
+  --radius-pill:10px;--note-rotate:0deg;--panel-border-w:1px;--btn-shape:var(--radius-pill);
+  --glass-blur:20px;--glass-blur-lg:34px;--glass-sat:130%;
+  --mat-shadow:0 16px 40px rgba(0,0,0,.10);
 }
 
-/* Liquid Glass Dark */
+/* Liquid Glass Dark (iOS 26 style) */
 body.theme-lgdark{
-  --bg-primary:#0a0a1a;
+  --bg-primary:#060912;
   --bg-secondary:rgba(255,255,255,.05);
-  --bg-tertiary:rgba(255,255,255,.08);
-  --bg-quaternary:rgba(255,255,255,.12);
+  --bg-tertiary:rgba(255,255,255,.09);
+  --bg-quaternary:rgba(255,255,255,.14);
   --surface:rgba(255,255,255,.07);
-  --surface-elevated:rgba(255,255,255,.10);
-  --glass:rgba(255,255,255,.08);
-  --glass-border:rgba(255,255,255,.25);
-  --glass-highlight:rgba(255,255,255,.3);
+  --surface-elevated:rgba(255,255,255,.12);
+  --glass:rgba(255,255,255,.10);
+  --glass-border:rgba(255,255,255,.32);
+  --glass-highlight:rgba(255,255,255,.55);
   --text-primary:#ffffff;
-  --text-secondary:rgba(255,255,255,.7);
-  --text-tertiary:rgba(255,255,255,.35);
-  --accent:#64d2ff;
-  --accent2:#30d158;
-  --accent3:#ff6961;
-  --accent4:#ffd60a;
-  --note1:rgba(255,214,10,.12);
-  --note1-border:rgba(255,214,10,.4);
+  --text-secondary:rgba(255,255,255,.72);
+  --text-tertiary:rgba(255,255,255,.38);
+  --accent:#5ac8ff;
+  --accent2:#32e391;
+  --accent3:#ff7a70;
+  --accent4:#ffd54a;
+  --note1:rgba(255,214,10,.14);
+  --note1-border:rgba(255,214,10,.45);
   --note1-text:#ffd60a;
-  --note2:rgba(255,105,97,.1);
-  --note2-border:rgba(255,105,97,.4);
-  --note2-text:#ff6961;
-  --note3:rgba(100,210,255,.1);
-  --note3-border:rgba(100,210,255,.4);
-  --note3-text:#64d2ff;
-  --note4:rgba(48,209,88,.1);
-  --note4-border:rgba(48,209,88,.4);
-  --note4-text:#30d158;
-  --separator:rgba(255,255,255,.12);
-  --shadow:rgba(0,0,0,.6);
-  --mat-bg:rgba(255,255,255,.04);
-  --mat-border:rgba(255,255,255,.2);
-  --phone-bg:rgba(0,0,0,.3);
-  --phone-border:rgba(255,255,255,.2);
-  --clock-face:rgba(255,255,255,.06);
-  --clock-stroke:rgba(255,255,255,.1);
-  --clock-hand:rgba(255,255,255,.9);
-  --clock-second:#64d2ff;
-  --panel-bg:rgba(255,255,255,.07);
+  --note2:rgba(255,105,97,.12);
+  --note2-border:rgba(255,105,97,.45);
+  --note2-text:#ff8077;
+  --note3:rgba(90,200,255,.12);
+  --note3-border:rgba(90,200,255,.45);
+  --note3-text:#7fd6ff;
+  --note4:rgba(50,227,145,.12);
+  --note4-border:rgba(50,227,145,.45);
+  --note4-text:#5cedab;
+  --separator:rgba(255,255,255,.14);
+  --shadow:rgba(0,0,0,.55);
+  --mat-bg:rgba(255,255,255,.05);
+  --mat-border:rgba(255,255,255,.28);
+  --phone-bg:rgba(10,12,22,.45);
+  --phone-border:rgba(255,255,255,.3);
+  --clock-face:rgba(255,255,255,.08);
+  --clock-stroke:rgba(255,255,255,.16);
+  --clock-tick:rgba(255,255,255,.55);
+  --clock-hand:rgba(255,255,255,.95);
+  --clock-second:#5ac8ff;
+  --panel-bg:rgba(255,255,255,.08);
+
+  /* rounded, soft, liquid identity */
+  --font-main:'Nunito',-apple-system,'SF Pro Rounded',BlinkMacSystemFont,Helvetica,Arial,sans-serif;
+  --radius-xs:14px;--radius-sm:18px;--radius-md:26px;--radius-lg:32px;--radius-xl:40px;--radius-mat:38px;
+  --radius-pill:999px;--note-rotate:-.4deg;--panel-border-w:1.25px;--btn-shape:999px;
+  --glass-blur:30px;--glass-blur-lg:46px;--glass-sat:190%;
+  --mat-shadow:0 30px 80px rgba(0,0,0,.6);
 }
 
-/* Liquid Glass Light */
+/* Liquid Glass Light (iOS 26 style) */
 body.theme-lglight{
-  --bg-primary:#e8f4ff;
-  --bg-secondary:rgba(255,255,255,.6);
-  --bg-tertiary:rgba(255,255,255,.45);
-  --bg-quaternary:rgba(255,255,255,.3);
-  --surface:rgba(255,255,255,.55);
-  --surface-elevated:rgba(255,255,255,.75);
-  --glass:rgba(255,255,255,.45);
-  --glass-border:rgba(255,255,255,.7);
-  --glass-highlight:rgba(255,255,255,.85);
+  --bg-primary:#eef5fb;
+  --bg-secondary:rgba(255,255,255,.62);
+  --bg-tertiary:rgba(255,255,255,.5);
+  --bg-quaternary:rgba(255,255,255,.34);
+  --surface:rgba(255,255,255,.58);
+  --surface-elevated:rgba(255,255,255,.8);
+  --glass:rgba(255,255,255,.5);
+  --glass-border:rgba(255,255,255,.85);
+  --glass-highlight:rgba(255,255,255,.95);
   --text-primary:#1c1c1e;
-  --text-secondary:rgba(28,28,30,.65);
-  --text-tertiary:rgba(28,28,30,.35);
-  --accent:#0066cc;
-  --accent2:#248a3d;
-  --accent3:#cc3d2e;
-  --accent4:#c07800;
-  --note1:rgba(255,214,10,.25);
-  --note1-border:rgba(200,160,0,.5);
+  --text-secondary:rgba(28,28,30,.68);
+  --text-tertiary:rgba(28,28,30,.38);
+  --accent:#0090ff;
+  --accent2:#1fa257;
+  --accent3:#e6453a;
+  --accent4:#e08900;
+  --note1:rgba(255,214,10,.28);
+  --note1-border:rgba(210,165,0,.55);
   --note1-text:#8a6500;
-  --note2:rgba(255,100,90,.18);
-  --note2-border:rgba(200,60,50,.4);
+  --note2:rgba(255,100,90,.2);
+  --note2-border:rgba(210,65,55,.45);
   --note2-text:#a0251c;
-  --note3:rgba(0,100,200,.12);
-  --note3-border:rgba(0,100,200,.35);
-  --note3-text:#003fa3;
-  --note4:rgba(30,180,80,.12);
-  --note4-border:rgba(30,160,70,.35);
-  --note4-text:#1a6b32;
+  --note3:rgba(0,140,255,.16);
+  --note3-border:rgba(0,120,230,.4);
+  --note3-text:#0058c7;
+  --note4:rgba(30,190,90,.16);
+  --note4-border:rgba(30,170,80,.4);
+  --note4-text:#177a3a;
   --separator:rgba(0,0,40,.08);
-  --shadow:rgba(30,40,100,.15);
-  --mat-bg:rgba(255,255,255,.35);
-  --mat-border:rgba(255,255,255,.6);
-  --phone-bg:rgba(255,255,255,.4);
-  --phone-border:rgba(255,255,255,.65);
-  --clock-face:rgba(255,255,255,.5);
-  --clock-stroke:rgba(0,0,40,.06);
+  --shadow:rgba(30,60,120,.18);
+  --mat-bg:rgba(255,255,255,.4);
+  --mat-border:rgba(255,255,255,.75);
+  --phone-bg:rgba(255,255,255,.5);
+  --phone-border:rgba(255,255,255,.8);
+  --clock-face:rgba(255,255,255,.65);
+  --clock-stroke:rgba(0,0,40,.08);
+  --clock-tick:rgba(20,20,40,.45);
   --clock-hand:#1c1c1e;
-  --clock-second:#cc3d2e;
-  --panel-bg:rgba(255,255,255,.5);
+  --clock-second:#e6453a;
+  --panel-bg:rgba(255,255,255,.55);
+
+  --font-main:'Nunito',-apple-system,'SF Pro Rounded',BlinkMacSystemFont,Helvetica,Arial,sans-serif;
+  --radius-xs:14px;--radius-sm:18px;--radius-md:26px;--radius-lg:32px;--radius-xl:40px;--radius-mat:38px;
+  --radius-pill:999px;--note-rotate:-.4deg;--panel-border-w:1.25px;--btn-shape:999px;
+  --glass-blur:30px;--glass-blur-lg:46px;--glass-sat:190%;
+  --mat-shadow:0 26px 70px rgba(40,80,150,.22);
 }
 
 /* ===== GLOBAL ===== */
 html{height:100%;}
 body{
   background:var(--bg-primary);
-  font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','SF Pro Display',Helvetica,Arial,sans-serif;
+  font-family:var(--font-main);
   color:var(--text-primary);
   padding:20px;
   min-height:100vh;
-  transition:background .5s,color .4s;
+  transition:background .5s,color .4s,font-family .2s;
   -webkit-font-smoothing:antialiased;
   -moz-osx-font-smoothing:grayscale;
 }
 
-/* --- iOS 16 Dark bg animation --- */
-body,.ios16dark-bg{background:#000000;}
+/* --- iOS 16 Dark bg: deep black, slow drifting nebula --- */
+body{background:#000000;}
+body::before{
+  content:'';position:fixed;inset:-10%;pointer-events:none;z-index:-2;
+  background:
+    radial-gradient(circle at 18% 12%,rgba(10,132,255,.16) 0%,transparent 42%),
+    radial-gradient(circle at 85% 80%,rgba(255,69,58,.08) 0%,transparent 45%),
+    radial-gradient(circle at 60% 95%,rgba(48,209,88,.07) 0%,transparent 40%);
+  background-size:140% 140%;
+  animation:iosDarkDrift 34s ease-in-out infinite;
+  filter:blur(6px);
+}
 
-/* --- iOS 16 Light bg animation --- */
+/* --- iOS 16 Light bg --- */
 body.theme-ios16light{background:#f2f2f7;}
 body.theme-ios16light::before{
-  content:'';position:fixed;inset:0;pointer-events:none;z-index:-1;
-  background:radial-gradient(ellipse 80% 60% at 20% 0%,rgba(120,180,255,.12) 0%,transparent 70%),
-             radial-gradient(ellipse 60% 80% at 80% 100%,rgba(180,120,255,.08) 0%,transparent 70%);
-  animation:iosBgFloat 20s ease-in-out infinite;
+  background:
+    radial-gradient(circle at 15% 8%,rgba(10,132,255,.14) 0%,transparent 45%),
+    radial-gradient(circle at 88% 18%,rgba(255,149,0,.10) 0%,transparent 42%),
+    radial-gradient(circle at 50% 100%,rgba(120,180,255,.12) 0%,transparent 50%);
+  background-size:150% 150%;
+  animation:iosLightDrift 28s ease-in-out infinite;
+  filter:blur(8px);
 }
 
-/* --- Liquid Glass Dark bg --- */
+/* --- Liquid Glass Dark bg: deep, fluid, glassy color blobs --- */
 body.theme-lgdark{
-  background:linear-gradient(135deg,#0d1628 0%,#121a2e 30%,#0a1520 60%,#16202e 100%);
-  background-size:200% 200%;
-  animation:lgDarkFlow 25s ease-in-out infinite;
+  background:radial-gradient(ellipse 120% 100% at 30% 0%,#0e1730 0%,#070b16 55%,#04060d 100%);
 }
 body.theme-lgdark::before{
-  content:'';position:fixed;inset:0;pointer-events:none;z-index:-1;
   background:
-    radial-gradient(ellipse 60% 50% at 20% 20%,rgba(100,150,255,.12) 0%,transparent 60%),
-    radial-gradient(ellipse 50% 60% at 80% 70%,rgba(150,80,255,.1) 0%,transparent 60%),
-    radial-gradient(ellipse 40% 40% at 50% 50%,rgba(0,200,180,.06) 0%,transparent 60%);
-  animation:lgBlobs 20s ease-in-out infinite;
+    radial-gradient(circle at 22% 24%,rgba(90,200,255,.30) 0%,transparent 38%),
+    radial-gradient(circle at 78% 18%,rgba(170,110,255,.24) 0%,transparent 40%),
+    radial-gradient(circle at 70% 78%,rgba(50,227,145,.18) 0%,transparent 42%),
+    radial-gradient(circle at 15% 85%,rgba(255,213,74,.12) 0%,transparent 38%);
+  background-size:160% 160%;
+  animation:lgFluidDrift 24s ease-in-out infinite;
+  filter:blur(2px) saturate(160%);
 }
 
 /* --- Liquid Glass Light bg --- */
 body.theme-lglight{
-  background:linear-gradient(135deg,#c8e6ff 0%,#ddd6ff 30%,#c0f4e8 60%,#e8d4ff 100%);
-  background-size:200% 200%;
-  animation:lgLightFlow 22s ease-in-out infinite;
+  background:radial-gradient(ellipse 120% 100% at 30% 0%,#d9ecff 0%,#eef5fb 55%,#f4eefc 100%);
 }
 body.theme-lglight::before{
-  content:'';position:fixed;inset:0;pointer-events:none;z-index:-1;
   background:
-    radial-gradient(ellipse 70% 50% at 30% 20%,rgba(255,255,255,.5) 0%,transparent 60%),
-    radial-gradient(ellipse 50% 60% at 70% 80%,rgba(200,180,255,.3) 0%,transparent 60%);
-  animation:lgBlobsLight 18s ease-in-out infinite;
+    radial-gradient(circle at 20% 20%,rgba(120,190,255,.45) 0%,transparent 42%),
+    radial-gradient(circle at 80% 15%,rgba(200,160,255,.4) 0%,transparent 42%),
+    radial-gradient(circle at 75% 80%,rgba(140,240,210,.4) 0%,transparent 44%),
+    radial-gradient(circle at 18% 85%,rgba(255,220,150,.32) 0%,transparent 40%);
+  background-size:160% 160%;
+  animation:lgFluidDriftLight 22s ease-in-out infinite;
+  filter:blur(2px) saturate(140%);
 }
 
-@keyframes iosBgFloat{0%,100%{background-position:50% 0%;}50%{background-position:50% 100%;}}
-@keyframes lgDarkFlow{0%{background-position:0% 0%;}50%{background-position:100% 100%;}100%{background-position:0% 0%;}}
-@keyframes lgLightFlow{0%{background-position:0% 0%;}50%{background-position:100% 100%;}100%{background-position:0% 0%;}}
-@keyframes lgBlobs{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.7;transform:scale(1.1);}}
-@keyframes lgBlobsLight{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.8;transform:scale(1.08);}}
+@keyframes iosDarkDrift{0%,100%{background-position:0% 0%;}50%{background-position:30% 18%;}}
+@keyframes iosLightDrift{0%,100%{background-position:0% 0%;}50%{background-position:-20% 15%;}}
+@keyframes lgFluidDrift{
+  0%,100%{background-position:0% 0%;transform:scale(1);}
+  33%{background-position:35% 20%;transform:scale(1.04);}
+  66%{background-position:-15% 30%;transform:scale(1.02);}
+}
+@keyframes lgFluidDriftLight{
+  0%,100%{background-position:0% 0%;transform:scale(1);}
+  33%{background-position:-25% 18%;transform:scale(1.03);}
+  66%{background-position:20% 28%;transform:scale(1.05);}
+}
 
-/* iOS 16 dark subtle bg effect */
+/* secondary ambient layer (all themes) — adds depth/parallax */
 body::after{
   content:'';position:fixed;inset:0;pointer-events:none;z-index:-1;
   background:
-    radial-gradient(ellipse 50% 40% at 15% 10%,rgba(10,132,255,.08) 0%,transparent 70%),
-    radial-gradient(ellipse 40% 50% at 85% 85%,rgba(48,209,88,.06) 0%,transparent 70%);
-  animation:iosDarkBg 30s ease-in-out infinite;
+    radial-gradient(ellipse 50% 40% at 85% 90%,rgba(255,255,255,.04) 0%,transparent 70%);
+  animation:ambientPulse 12s ease-in-out infinite;
 }
-body.theme-ios16light::after,
-body.theme-lgdark::after,
-body.theme-lglight::after{display:none;}
-@keyframes iosDarkBg{0%,100%{opacity:1;}50%{opacity:.5;}}
+body.theme-lgdark::after,body.theme-lglight::after{
+  background:radial-gradient(ellipse 60% 50% at 50% 100%,rgba(255,255,255,.12) 0%,transparent 70%);
+  mix-blend-mode:overlay;
+}
+@keyframes ambientPulse{0%,100%{opacity:.6;}50%{opacity:1;}}
 
 /* ===== GLASS MIXIN helper ===== */
 .glass-panel{
   background:var(--glass);
-  border:1px solid var(--glass-border);
-  backdrop-filter:blur(20px) saturate(150%);
-  -webkit-backdrop-filter:blur(20px) saturate(150%);
+  border:var(--panel-border-w) solid var(--glass-border);
+  backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-sat));
+  -webkit-backdrop-filter:blur(var(--glass-blur)) saturate(var(--glass-sat));
   box-shadow:0 1px 0 var(--glass-highlight) inset,0 8px 32px var(--shadow);
 }
 .glass-panel-lg{
   background:var(--glass);
-  border:1px solid var(--glass-border);
-  backdrop-filter:blur(32px) saturate(180%);
-  -webkit-backdrop-filter:blur(32px) saturate(180%);
+  border:var(--panel-border-w) solid var(--glass-border);
+  backdrop-filter:blur(var(--glass-blur-lg)) saturate(var(--glass-sat));
+  -webkit-backdrop-filter:blur(var(--glass-blur-lg)) saturate(var(--glass-sat));
   box-shadow:0 1px 0 var(--glass-highlight) inset,0 0 0 .5px var(--glass-border) inset,0 16px 48px var(--shadow);
 }
 
 /* ===== HEADER ===== */
 .app-header{display:flex;align-items:center;gap:12px;margin-bottom:16px;}
-.app-title{font-size:22px;font-weight:700;letter-spacing:-.6px;color:var(--text-primary);}
+.app-title{font-size:22px;font-weight:700;letter-spacing:-.6px;color:var(--text-primary);transition:font-family .2s;}
+body.theme-lgdark .app-title,body.theme-lglight .app-title{font-weight:800;letter-spacing:-.3px;}
 .app-subtitle{font-size:12px;color:var(--text-tertiary);font-weight:400;letter-spacing:.1px;}
 
 /* ===== THEME BAR — iOS Control Center style ===== */
 .theme-bar{
   display:flex;gap:8px;align-items:center;margin-bottom:16px;
-  background:var(--glass);border:1px solid var(--glass-border);
-  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
-  border-radius:20px;padding:8px 12px;
+  background:var(--glass);border:var(--panel-border-w) solid var(--glass-border);
+  backdrop-filter:blur(var(--glass-blur));-webkit-backdrop-filter:blur(var(--glass-blur));
+  border-radius:var(--radius-lg);padding:8px 12px;
   box-shadow:0 1px 0 var(--glass-highlight) inset;
+  transition:border-radius .4s var(--ease-smooth);
 }
 .theme-bar-label{font-size:11px;font-weight:600;color:var(--text-tertiary);letter-spacing:.5px;text-transform:uppercase;white-space:nowrap;}
 .theme-swatches{display:flex;gap:6px;align-items:center;}
 .theme-swatch{
   width:28px;height:28px;border-radius:50%;cursor:pointer;
   border:2px solid transparent;
-  transition:transform .18s cubic-bezier(.34,1.56,.64,1),border-color .15s;
+  transition:transform .18s var(--ease-spring),border-color .15s,box-shadow .2s;
   position:relative;
 }
 .theme-swatch::after{
@@ -305,32 +373,34 @@ body.theme-lglight::after{display:none;}
   border:2px solid transparent;transition:border-color .15s;
 }
 .theme-swatch.active::after{border-color:var(--text-primary);}
-.theme-swatch:hover{transform:scale(1.15);}
+.theme-swatch:hover{transform:scale(1.15) rotate(8deg);box-shadow:0 4px 14px var(--shadow);}
 .theme-swatch:active{transform:scale(.92);}
 
 /* ===== MAT ===== */
 .mat{
   background:var(--mat-bg);
-  border:1px solid var(--mat-border);
-  border-radius:28px;
+  border:var(--panel-border-w) solid var(--mat-border);
+  border-radius:var(--radius-mat);
   padding:18px;
-  box-shadow:0 2px 0 rgba(255,255,255,.03) inset,0 20px 60px rgba(0,0,0,.4);
+  box-shadow:0 2px 0 rgba(255,255,255,.03) inset,var(--mat-shadow);
   max-width:1400px;
   margin:0 auto;
   position:relative;
-  transition:background .4s,border-color .4s,box-shadow .4s;
+  transition:background .4s,border-color .4s,box-shadow .4s,border-radius .4s var(--ease-smooth);
 }
 body.theme-lgdark .mat,body.theme-lglight .mat{
-  background:var(--glass);
-  border:1px solid var(--glass-border);
-  backdrop-filter:blur(32px) saturate(180%);
-  -webkit-backdrop-filter:blur(32px) saturate(180%);
-  box-shadow:0 1px 0 var(--glass-highlight) inset,0 20px 60px var(--shadow);
+  background:
+    linear-gradient(155deg,rgba(255,255,255,.16) 0%,rgba(255,255,255,.03) 28%,rgba(255,255,255,0) 55%),
+    var(--glass);
+  border:1.5px solid var(--glass-border);
+  backdrop-filter:blur(var(--glass-blur-lg)) saturate(var(--glass-sat));
+  -webkit-backdrop-filter:blur(var(--glass-blur-lg)) saturate(var(--glass-sat));
+  box-shadow:0 1.5px 0 var(--glass-highlight) inset,0 -1px 0 rgba(0,0,0,.12) inset,var(--mat-shadow);
 }
 body.theme-ios16light .mat{
   background:rgba(255,255,255,.7);
   border-color:rgba(0,0,0,.05);
-  box-shadow:0 2px 0 rgba(255,255,255,.9) inset,0 8px 32px rgba(0,0,0,.08);
+  box-shadow:0 2px 0 rgba(255,255,255,.9) inset,var(--mat-shadow);
 }
 
 /* Layout */
@@ -340,17 +410,19 @@ body.theme-ios16light .mat{
 /* ===== STICKY NOTES ===== */
 .top-row{display:flex;gap:10px;flex-wrap:nowrap;}
 .note{
-  flex:1;min-width:0;border-radius:18px;padding:14px 12px 10px;
+  flex:1;min-width:0;border-radius:var(--radius-md);padding:14px 12px 10px;
   cursor:pointer;position:relative;user-select:none;
-  border:1px solid var(--note1-border);
+  border:var(--panel-border-w) solid var(--note1-border);
   background:var(--note1);
-  transition:transform .16s cubic-bezier(.34,1.56,.64,1),box-shadow .16s ease,filter .2s ease;
+  transform:rotate(var(--note-rotate));
+  transition:transform .2s var(--ease-spring),box-shadow .2s ease,filter .2s ease,border-radius .4s var(--ease-smooth);
   box-shadow:0 1px 0 rgba(255,255,255,.08) inset,0 4px 16px var(--shadow);
 }
+.note:nth-child(2n){--note-rotate:calc(var(--note-rotate) * -1);}
 .note2{background:var(--note2);border-color:var(--note2-border);}
 .note3{background:var(--note3);border-color:var(--note3-border);}
 .note4{background:var(--note4);border-color:var(--note4-border);}
-.note:hover{transform:translateY(-2px);box-shadow:0 1px 0 rgba(255,255,255,.1) inset,0 8px 24px var(--shadow);}
+.note:hover{transform:translateY(-3px) rotate(0deg) scale(1.015);box-shadow:0 1px 0 rgba(255,255,255,.1) inset,0 10px 28px var(--shadow);}
 .note:active{transform:scale(.96);}
 .note.done{opacity:.5;filter:saturate(.3);}
 .note.active-task{
@@ -379,20 +451,22 @@ body.theme-ios16light .mat{
   position:absolute;bottom:8px;right:8px;background:rgba(0,0,0,.2);border:none;
   color:rgba(255,255,255,.6);width:20px;height:20px;border-radius:50%;font-size:10px;
   cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;
-  opacity:0;transition:opacity .15s;z-index:10;
+  opacity:0;transition:opacity .15s,transform .15s;z-index:10;
 }
+.note .del-btn:hover{transform:scale(1.15);}
 body.theme-ios16light .note .del-btn{background:rgba(0,0,0,.1);color:rgba(0,0,0,.5);}
 .note:hover .del-btn{opacity:1;}
 .note h3{
   margin:16px 0 2px;font-size:14px;font-weight:600;letter-spacing:-.3px;
   color:var(--text-primary);
 }
+body.theme-lgdark .note h3,body.theme-lglight .note h3{font-weight:700;}
 .note p{margin:0;font-size:11px;color:var(--text-secondary);font-weight:400;}
 .note .note-meta{
   display:flex;justify-content:space-between;margin-top:8px;gap:4px;
 }
 .note .note-meta input{
-  background:rgba(255,255,255,.12);border:none;border-radius:8px;
+  background:rgba(255,255,255,.12);border:none;border-radius:var(--radius-xs);
   font-family:inherit;font-size:10px;color:var(--text-secondary);
   padding:3px 6px;text-align:center;width:56px;outline:none;
 }
@@ -403,16 +477,23 @@ body.theme-ios16light .note .note-meta input{background:rgba(0,0,0,.06);}
 .bottom-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
 .panel{
   background:var(--panel-bg);
-  border:1px solid var(--glass-border);
-  border-radius:20px;padding:14px 12px;
-  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  border:var(--panel-border-w) solid var(--glass-border);
+  border-radius:var(--radius-lg);padding:14px 12px;
+  backdrop-filter:blur(var(--glass-blur));-webkit-backdrop-filter:blur(var(--glass-blur));
   box-shadow:0 1px 0 var(--glass-highlight) inset,0 4px 16px var(--shadow);
+  transition:border-radius .4s var(--ease-smooth),transform .2s var(--ease-spring),box-shadow .2s;
+  position:relative;overflow:hidden;
 }
+body.theme-lgdark .panel,body.theme-lglight .panel{
+  background:linear-gradient(160deg,rgba(255,255,255,.18) 0%,rgba(255,255,255,.02) 35%,rgba(255,255,255,0) 60%),var(--panel-bg);
+}
+.panel:hover{transform:translateY(-2px);}
 .panel-label{
   font-size:10px;font-weight:600;letter-spacing:.8px;
   color:var(--text-tertiary);text-transform:uppercase;margin-bottom:10px;
   display:block;
 }
+body.theme-lgdark .panel-label,body.theme-lglight .panel-label{font-weight:700;}
 
 /* ===== CLOCK ===== */
 #iphone-clock-wrap{
@@ -422,7 +503,9 @@ body.theme-ios16light .note .note-meta input{background:rgba(0,0,0,.06);}
   font-size:42px;font-weight:300;letter-spacing:-2px;
   color:var(--text-primary);line-height:1;margin:4px 0 2px;
   font-feature-settings:"tnum";
+  transition:font-weight .2s,letter-spacing .2s;
 }
+body.theme-lgdark #bigTime,body.theme-lglight #bigTime{font-weight:600;letter-spacing:-1px;}
 #bigTimeSec{
   font-size:22px;font-weight:300;letter-spacing:-1px;
   color:var(--text-secondary);vertical-align:top;display:inline-block;
@@ -433,9 +516,19 @@ body.theme-ios16light .note .note-meta input{background:rgba(0,0,0,.06);}
   letter-spacing:.2px;margin-top:4px;
 }
 .clock-analog-mini{
-  position:relative;width:60px;height:60px;margin:6px auto 4px;
+  position:relative;width:64px;height:64px;margin:8px auto 4px;
+  filter:drop-shadow(0 3px 8px var(--shadow));
 }
-.clock-analog-mini svg{width:100%;height:100%;}
+.clock-analog-mini svg{width:100%;height:100%;display:block;}
+/* iOS16: squircle clock face (shown by default) */
+.clock-face-square{display:block;}
+.clock-face-round{display:none;}
+/* Liquid Glass: round glass clock face */
+body.theme-lgdark .clock-face-square,
+body.theme-lglight .clock-face-square{display:none;}
+body.theme-lgdark .clock-face-round,
+body.theme-lglight .clock-face-round{display:block;}
+.clock-face-round .cf-rim{filter:drop-shadow(0 1px 0 var(--glass-highlight));}
 
 /* ===== TIMER ===== */
 #timerDisplay{
