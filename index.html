@@ -2810,8 +2810,10 @@ if(!channelId){channelId='deskmat_'+Math.random().toString(36).slice(2,8);sessio
 /* FIX #2: Danh sách broker fallback — thử lần lượt nếu broker trước fail.
    broker.emqx.io đôi khi bị overload/block, cần fallback. */
 const MQTT_BROKERS=[
+  'wss://test.mosquitto.org:8081',
   'wss://broker.emqx.io:8084/mqtt',
   'wss://broker.hivemq.com:8884/mqtt',
+  'wss://mqtt.eclipseprojects.io:443/mqtt',
 ];
 let mqttBrokerIdx=0;
 const TOPIC_CMD='deskmat3v/'+channelId+'/cmd';
@@ -2825,57 +2827,56 @@ function setPhoneStatus(text,cls){
   phoneConnStatus.className=cls||'';
 }
 
-/* FIX #3: initMqtt không dùng guard `if(mqttClient)return` nữa.
-   Thay vào đó cleanup client cũ trước khi tạo mới để đảm bảo
-   luôn kết nối được kể cả sau khi disconnect/error. */
+let mqttReconnectTimer=null,mqttConnected=false;
 function initMqtt(){
-  if(typeof mqtt==='undefined'){
-    setPhoneStatus('⚠️ Lỗi: Không tải được thư viện MQTT','');
-    return;
-  }
-  /* Cleanup client cũ nếu có */
-  if(mqttClient){
-    try{mqttClient.end(true);}catch(e){}
-    mqttClient=null;
-  }
+  if(typeof mqtt==='undefined'){setPhoneStatus('⚠️ Không tải được thư viện MQTT','');return;}
+  if(mqttReconnectTimer){clearTimeout(mqttReconnectTimer);mqttReconnectTimer=null;}
+  if(mqttClient){try{mqttClient.end(true);}catch(e){}mqttClient=null;}
+  mqttConnected=false;
   const broker=MQTT_BROKERS[mqttBrokerIdx%MQTT_BROKERS.length];
   setPhoneStatus('🔄 Đang kết nối...','waiting');
-  try{
-    mqttClient=mqtt.connect(broker,{
-      clientId:'desktop_'+channelId+'_'+Math.random().toString(36).slice(2,5),
-      reconnectPeriod:0, /* tắt auto-reconnect để tự xử lý fallback */
-      connectTimeout:8000,
-      keepalive:30,
-    });
-    mqttClient.on('connect',()=>{
-      mqttBrokerIdx=0; /* reset về broker chính khi kết nối thành công */
-      mqttClient.subscribe(TOPIC_CMD);
-      broadcastState();
-      if(qrMode) setPhoneStatus('⏳ Chờ điện thoại quét QR...','waiting');
-    });
-    mqttClient.on('message',(topic,payload)=>{
-      try{
-        const d=JSON.parse(payload.toString());if(d.from!=='remote')return;
-        setPhoneStatus('✅ Đã kết nối điện thoại','connected');
-        phoneZone.classList.add('connected-state');
-        if(d.file){handleRemoteFile(d.file);broadcastState();return;}
-        handleRemoteCommand(d.cmd);broadcastState();
-      }catch(ex){}
-    });
-    /* FIX: Khi lỗi → thử broker tiếp theo trong danh sách */
-    mqttClient.on('error',(err)=>{
+  const client=mqtt.connect(broker,{
+    clientId:'desktop_'+channelId+'_'+Math.random().toString(36).slice(2,5),
+    reconnectPeriod:0,
+    connectTimeout:9000,
+    keepalive:25,
+  });
+  mqttClient=client;
+  client.on('connect',()=>{
+    if(client!==mqttClient)return;
+    mqttConnected=true;
+    mqttBrokerIdx=0;
+    client.subscribe(TOPIC_CMD);
+    broadcastState();
+    setPhoneStatus(qrMode?'⏳ Chờ điện thoại quét QR...':'✅ MQTT sẵn sàng','waiting');
+  });
+  client.on('message',(topic,payload)=>{
+    if(client!==mqttClient)return;
+    try{
+      const d=JSON.parse(payload.toString());if(d.from!=='remote')return;
+      setPhoneStatus('✅ Đã kết nối điện thoại','connected');
+      phoneZone.classList.add('connected-state');
+      if(d.file){handleRemoteFile(d.file);broadcastState();return;}
+      handleRemoteCommand(d.cmd);broadcastState();
+    }catch(ex){}
+  });
+  client.on('error',()=>{
+    if(client!==mqttClient)return;
+    mqttBrokerIdx++;
+    setPhoneStatus('⚠️ Thử broker khác...','');
+    mqttReconnectTimer=setTimeout(initMqtt,2000);
+  });
+  client.on('close',()=>{
+    if(client!==mqttClient)return;
+    if(mqttConnected){
+      setPhoneStatus('🔄 Mất kết nối, reconnect...','waiting');
+      mqttReconnectTimer=setTimeout(initMqtt,3000);
+    } else {
       mqttBrokerIdx++;
-      setPhoneStatus('⚠️ Broker lỗi, đang thử lại...','');
-      setTimeout(initMqtt,1500);
-    });
-    mqttClient.on('close',()=>{
-      if(qrMode) setPhoneStatus('🔄 Mất kết nối, đang reconnect...','waiting');
-      setTimeout(()=>{if(qrMode)initMqtt();},3000);
-    });
-  }catch(ex){
-    setPhoneStatus('⚠️ Lỗi kết nối: '+ex.message,'');
-    setTimeout(initMqtt,3000);
-  }
+      setPhoneStatus('⚠️ Thử broker khác...','');
+      mqttReconnectTimer=setTimeout(initMqtt,1500);
+    }
+  });
 }
 function handleRemoteFile(payload){
   try{
@@ -2945,6 +2946,9 @@ function broadcastState(){
   mqttClient.publish(TOPIC_STATE,JSON.stringify({from:'desktop',timer:focusRunning?formatTime(focusSeconds):timerDisplay.textContent,task:getCurrentTaskName(),phase:focusRunning?focusPhase.textContent:'',progress:pct,tasks,theme:currentTheme}));
 }
 setInterval(broadcastState,2000);
+
+/* Auto-init MQTT ngay khi load — không đợi bấm QR */
+if(!isLocalFile()) setTimeout(initMqtt, 500);
 
 function showQRPanel(){
   qrMode=!qrMode;
@@ -3265,26 +3269,43 @@ qrBtn.addEventListener('click',showQRPanel);
   document.getElementById('rmFriendInput').addEventListener('keydown',e=>{if(e.key==='Enter')rmAddFriend();});
   renderFriends();
 
-  /* ---- MQTT (remote) — fallback broker + auto-reconnect ---- */
+  /* ---- MQTT (remote) ---- */
   let lastPhaseText='';
   if(typeof mqtt==='undefined'){connEl.textContent='⚠️ Không tải được thư viện kết nối';connEl.className='err';return;}
-  const RM_BROKERS=['wss://broker.emqx.io:8084/mqtt','wss://broker.hivemq.com:8884/mqtt'];
-  let rmBrokerIdx=0;
+  const RM_BROKERS=[
+    'wss://test.mosquitto.org:8081',
+    'wss://broker.emqx.io:8084/mqtt',
+    'wss://broker.hivemq.com:8884/mqtt',
+    'wss://mqtt.eclipseprojects.io:443/mqtt',
+  ];
+  let rmBrokerIdx=0,rmReconnectTimer=null,rmConnected=false;
+
   function doRmConnect(){
+    /* Hủy timer cũ tránh gọi chồng */
+    if(rmReconnectTimer){clearTimeout(rmReconnectTimer);rmReconnectTimer=null;}
     if(rmClient){try{rmClient.end(true);}catch(e){}rmClient=null;}
+    rmConnected=false;
     const broker=RM_BROKERS[rmBrokerIdx%RM_BROKERS.length];
-    connEl.textContent='🔄 Kết nối... ('+broker.split('/')[2]+')';connEl.className='';
-    rmClient=mqtt.connect(broker,{
+    connEl.textContent='🔄 Đang kết nối...';connEl.className='';
+    const client=mqtt.connect(broker,{
       clientId:'remote_'+ch+'_'+Math.random().toString(36).slice(2,6),
-      reconnectPeriod:0,connectTimeout:8000,keepalive:30
+      reconnectPeriod:0,
+      connectTimeout:9000,
+      keepalive:25,
     });
-    rmClient.on('connect',()=>{
-      rmBrokerIdx=0;
-      rmClient.subscribe(stateTopic);
-      rmClient.publish(cmdTopic,JSON.stringify({from:'remote',cmd:'request_state'}));
-      connEl.textContent='⏳ Đã kết nối broker, đợi Desktop...';connEl.className='';
+    rmClient=client;
+
+    client.on('connect',()=>{
+      if(client!==rmClient)return; /* stale client, bỏ qua */
+      rmConnected=true;
+      rmBrokerIdx=0; /* reset về broker đầu khi thành công */
+      client.subscribe(stateTopic);
+      client.publish(cmdTopic,JSON.stringify({from:'remote',cmd:'request_state'}));
+      connEl.textContent='⏳ Đã kết nối, chờ Desktop...';connEl.className='';
     });
-    rmClient.on('message',(topic,payload)=>{
+
+    client.on('message',(topic,payload)=>{
+      if(client!==rmClient)return;
       try{
         const d=JSON.parse(payload.toString());if(d.from!=='desktop')return;
         connEl.textContent='✅ Đã kết nối Desktop';connEl.className='ok';
@@ -3307,17 +3328,29 @@ qrBtn.addEventListener('click',showQRPanel);
         if(d.focusDuration)lsSet('focus_duration',d.focusDuration);
       }catch(ex){}
     });
-    rmClient.on('error',()=>{
+
+    client.on('error',()=>{
+      if(client!==rmClient)return;
       rmBrokerIdx++;
-      connEl.textContent='⚠️ Broker lỗi, thử lại...';connEl.className='err';
-      setTimeout(doRmConnect,1500);
+      connEl.textContent='⚠️ Thử broker khác...';connEl.className='err';
+      rmReconnectTimer=setTimeout(doRmConnect,2000);
     });
-    rmClient.on('close',()=>{
-      if(connEl.className==='ok') connEl.textContent='🔄 Mất kết nối, đang reconnect...';
-      connEl.className='err';
-      setTimeout(doRmConnect,3000);
+
+    client.on('close',()=>{
+      if(client!==rmClient)return;
+      if(rmConnected){
+        /* Đã từng connect OK → reconnect cùng broker */
+        connEl.textContent='🔄 Mất kết nối, reconnect...';connEl.className='err';
+        rmReconnectTimer=setTimeout(doRmConnect,3000);
+      } else {
+        /* Chưa connect được → thử broker tiếp theo */
+        rmBrokerIdx++;
+        connEl.textContent='⚠️ Thử broker khác...';connEl.className='err';
+        rmReconnectTimer=setTimeout(doRmConnect,1500);
+      }
     });
   }
+
   doRmConnect();
   setInterval(()=>{if(rmClient&&rmClient.connected)rmClient.publish(cmdTopic,JSON.stringify({from:'remote',cmd:'ping'}));},4000);
 })();
