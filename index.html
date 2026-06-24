@@ -706,57 +706,12 @@ body.theme-ios16light .mat{
 .note2{background:var(--note2);border-color:var(--note2-border);}
 .note3{background:var(--note3);border-color:var(--note3-border);}
 .note4{background:var(--note4);border-color:var(--note4-border);}
-.note:hover{
-  transform:translateY(-6px) rotate(0deg) scale(1.07);
-  box-shadow:0 1px 0 rgba(255,255,255,.14) inset,0 16px 40px var(--shadow);
-  z-index:10;
-}
-
-/* Note xung quanh mờ xuống khi có 1 note đang được hover
-   Dùng CSS :has() — zero JS, chỉ opacity+filter (GPU compositor, không repaint) */
-.top-row:has(.note:hover) .note:not(:hover){
-  opacity:.38;
-  filter:saturate(.5) blur(0.5px);
-  transform:rotate(var(--note-rotate)) scale(.97);
-}
-
-/* GPU hint — chỉ trên elements thực sự animate, không phải glass pseudo-elements */
+.note:hover{transform:translateY(-3px) rotate(0deg) scale(1.015);box-shadow:0 1px 0 rgba(255,255,255,.1) inset,0 10px 28px var(--shadow);}
+/* GPU hint for hover-animated elements — only on interactive elements, not backdrop-filter layers */
 .note{will-change:transform;}
 .panel{will-change:transform;}
 .lg-note-card{will-change:transform;}
 .note:active{transform:scale(.96);}
-   KHÔNG tăng backdrop-filter blur (tốn GPU) — thay bằng tăng border opacity
-   và brightness để giả lập refraction mà không tạo thêm stacking context */
-body.theme-lgdark .note:hover,
-body.theme-lglight .note:hover{
-  border-color:rgba(255,255,255,.75);
-  box-shadow:
-    0 3px 0 rgba(255,255,255,.95) inset,
-    0 -1px 0 rgba(255,255,255,.20) inset,
-    0 20px 50px var(--shadow),
-    0 0 60px rgba(255,255,255,.08);
-  filter:brightness(1.12) saturate(1.15);
-  backdrop-filter:blur(18px) saturate(180%) brightness(115%);
-  -webkit-backdrop-filter:blur(18px) saturate(180%) brightness(115%);
-}
-
-/* Caustic refraction overlay tăng mạnh khi hover (thay đổi ::before — không tạo layer mới) */
-body.theme-lgdark .note:hover::before,
-body.theme-lglight .note:hover::before{
-  background:
-    radial-gradient(ellipse 90% 60% at 25% 18%,rgba(255,255,255,.28) 0%,transparent 100%),
-    radial-gradient(ellipse 50% 40% at 75% 70%,rgba(255,255,255,.14) 0%,transparent 100%);
-}
-body.theme-lgdark .note:hover::after,
-body.theme-lglight .note:hover::after{
-  background:linear-gradient(90deg,transparent 0%,rgba(255,255,255,.98) 25%,rgba(255,255,255,1) 55%,rgba(255,255,255,.98) 75%,transparent 100%);
-  height:2px;left:4%;right:4%;
-}
-
-/* iOS16: note hover đơn giản hơn, không cần refraction */
-body:not(.theme-lgdark):not(.theme-lglight) .note:hover{
-  filter:brightness(1.06);
-}
 .note.done{opacity:.5;filter:saturate(.3);}
 .note.active-task{
   animation:activeTaskPulse 1.4s ease-in-out infinite;
@@ -1672,25 +1627,14 @@ body.theme-lglight .rm-section::after{
 #rmProgressInfo{font-size:13px;text-align:center;color:var(--text-secondary);}
 
 .toast{
-  position:fixed;
-  /* giữa panel theo cả 2 chiều */
-  top:50%;left:50%;
-  transform:translate(-50%,-50%) scale(.88);
+  position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(16px);
   background:var(--glass);border:1px solid var(--glass-border);
   backdrop-filter:blur(var(--glass-blur));-webkit-backdrop-filter:blur(var(--glass-blur));
-  color:var(--text-primary);
-  padding:18px 32px;
-  border-radius:var(--radius-md);
-  font-size:17px;font-weight:600;letter-spacing:-.2px;
-  opacity:0;
-  transition:opacity .22s,transform .22s var(--ease-spring);
-  pointer-events:none;z-index:300;
-  box-shadow:0 2px 0 var(--glass-highlight) inset,0 12px 40px var(--shadow);
-  white-space:nowrap;
-  text-align:center;
-  min-width:160px;
+  color:var(--text-primary);padding:10px 18px;border-radius:var(--btn-shape);
+  font-size:13px;font-weight:500;opacity:0;transition:.3s;pointer-events:none;z-index:300;
+  box-shadow:0 4px 20px var(--shadow);white-space:nowrap;
 }
-.toast.show{opacity:1;transform:translate(-50%,-50%) scale(1);}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 
 /* ===== MISC ===== */
 .footer-note{text-align:center;color:var(--text-tertiary);font-size:11px;margin-top:14px;}
@@ -2799,84 +2743,27 @@ phoneZone.addEventListener('click',(e)=>{
 /* MQTT / QR */
 const qrImg=document.getElementById('qrImg'),qrStatus=document.getElementById('qrStatus'),phoneConnStatus=document.getElementById('phoneConnStatus'),phoneRemoteInfo=document.getElementById('phoneRemoteInfo'),qrBtn=document.getElementById('qrBtn');
 let mqttClient=null,qrMode=false;
-
-/* FIX #1: channelId phải persist qua refresh — dùng sessionStorage.
-   Mỗi tab trình duyệt giữ cùng 1 channel trong suốt session làm việc.
-   Điện thoại quét QR 1 lần, dù desktop refresh vẫn kết nối lại được. */
-const SESSION_KEY='deskmat_channel_id';
-let channelId=sessionStorage.getItem(SESSION_KEY);
-if(!channelId){channelId='deskmat_'+Math.random().toString(36).slice(2,8);sessionStorage.setItem(SESSION_KEY,channelId);}
-
-/* FIX #2: Danh sách broker fallback — thử lần lượt nếu broker trước fail.
-   broker.emqx.io đôi khi bị overload/block, cần fallback. */
-const MQTT_BROKERS=[
-  'wss://test.mosquitto.org:8081',
-  'wss://broker.emqx.io:8084/mqtt',
-  'wss://broker.hivemq.com:8884/mqtt',
-  'wss://mqtt.eclipseprojects.io:443/mqtt',
-];
-let mqttBrokerIdx=0;
+/* FIX: channelId persist qua refresh — điện thoại không bị mất kết nối khi desktop refresh */
+let channelId=sessionStorage.getItem('deskmat_ch');
+if(!channelId){channelId='deskmat_'+Math.random().toString(36).slice(2,8);sessionStorage.setItem('deskmat_ch',channelId);}
+const MQTT_BROKER='wss://broker.emqx.io:8084/mqtt';
 const TOPIC_CMD='deskmat3v/'+channelId+'/cmd';
 const TOPIC_STATE='deskmat3v/'+channelId+'/state';
 function isLocalFile(){return location.protocol==='file:';}
-
-function setPhoneStatus(text,cls){
-  if(!phoneConnStatus)return;
-  phoneConnStatus.style.display='';
-  phoneConnStatus.textContent=text;
-  phoneConnStatus.className=cls||'';
-}
-
-let mqttReconnectTimer=null,mqttConnected=false;
 function initMqtt(){
-  if(typeof mqtt==='undefined'){setPhoneStatus('⚠️ Không tải được thư viện MQTT','');return;}
-  if(mqttReconnectTimer){clearTimeout(mqttReconnectTimer);mqttReconnectTimer=null;}
-  if(mqttClient){try{mqttClient.end(true);}catch(e){}mqttClient=null;}
-  mqttConnected=false;
-  const broker=MQTT_BROKERS[mqttBrokerIdx%MQTT_BROKERS.length];
-  setPhoneStatus('🔄 Đang kết nối...','waiting');
-  const client=mqtt.connect(broker,{
-    clientId:'desktop_'+channelId+'_'+Math.random().toString(36).slice(2,5),
-    reconnectPeriod:0,
-    connectTimeout:9000,
-    keepalive:25,
-  });
-  mqttClient=client;
-  client.on('connect',()=>{
-    if(client!==mqttClient)return;
-    mqttConnected=true;
-    mqttBrokerIdx=0;
-    client.subscribe(TOPIC_CMD);
-    broadcastState();
-    setPhoneStatus(qrMode?'⏳ Chờ điện thoại quét QR...':'✅ MQTT sẵn sàng','waiting');
-  });
-  client.on('message',(topic,payload)=>{
-    if(client!==mqttClient)return;
-    try{
-      const d=JSON.parse(payload.toString());if(d.from!=='remote')return;
-      setPhoneStatus('✅ Đã kết nối điện thoại','connected');
-      phoneZone.classList.add('connected-state');
-      if(d.file){handleRemoteFile(d.file);broadcastState();return;}
-      handleRemoteCommand(d.cmd);broadcastState();
-    }catch(ex){}
-  });
-  client.on('error',()=>{
-    if(client!==mqttClient)return;
-    mqttBrokerIdx++;
-    setPhoneStatus('⚠️ Thử broker khác...','');
-    mqttReconnectTimer=setTimeout(initMqtt,2000);
-  });
-  client.on('close',()=>{
-    if(client!==mqttClient)return;
-    if(mqttConnected){
-      setPhoneStatus('🔄 Mất kết nối, reconnect...','waiting');
-      mqttReconnectTimer=setTimeout(initMqtt,3000);
-    } else {
-      mqttBrokerIdx++;
-      setPhoneStatus('⚠️ Thử broker khác...','');
-      mqttReconnectTimer=setTimeout(initMqtt,1500);
-    }
-  });
+  if(mqttClient||typeof mqtt==='undefined')return;
+  try{
+    mqttClient=mqtt.connect(MQTT_BROKER,{clientId:'desktop_'+channelId,reconnectPeriod:3000});
+    mqttClient.on('connect',()=>{mqttClient.subscribe(TOPIC_CMD);broadcastState();});
+    mqttClient.on('message',(topic,payload)=>{
+      try{
+        const d=JSON.parse(payload.toString());if(d.from!=='remote')return;
+        phoneConnStatus.textContent='✅ Đã kết nối';phoneConnStatus.className='connected';phoneConnStatus.style.display='';
+        if(d.file){handleRemoteFile(d.file);broadcastState();return;}
+        handleRemoteCommand(d.cmd);broadcastState();
+      }catch(ex){}
+    });
+  }catch(ex){}
 }
 function handleRemoteFile(payload){
   try{
@@ -2947,31 +2834,25 @@ function broadcastState(){
 }
 setInterval(broadcastState,2000);
 
-/* Auto-init MQTT ngay khi load — không đợi bấm QR */
-if(!isLocalFile()) setTimeout(initMqtt, 500);
+/* FIX: Auto-init MQTT khi load — không cần bấm QR trước */
+if(!isLocalFile()) setTimeout(initMqtt,500);
 
 function showQRPanel(){
   qrMode=!qrMode;
   qrImg.style.display=qrMode?'block':'none';
   qrStatus.style.display=qrMode?'block':'none';
+  phoneConnStatus.style.display=qrMode?'':'none';
   phoneRemoteInfo.style.display=qrMode?'block':'none';
   if(qrMode){
-    if(isLocalFile()){
-      qrStatus.innerHTML='⚠️ Đang mở file:// — điện thoại không thể kết nối. Hãy dùng link GitHub Pages.';
-      phoneRemoteInfo.style.display='none';
-      setPhoneStatus('⚠️ Cần host online','');
-      return;
-    }
+    initMqtt();
+    if(isLocalFile()){qrStatus.innerHTML='⚠️ File đang mở trực tiếp (file://) — điện thoại không thể mở được link này. Hãy host lên Netlify/GitHub Pages.';phoneRemoteInfo.style.display='none';return;}
     const remoteUrl=location.origin+location.pathname+'?remote=1&ch='+channelId;
     qrImg.src='https://api.qrserver.com/v1/create-qr-code/?size=140x140&margin=4&data='+encodeURIComponent(remoteUrl);
     qrStatus.textContent='📷 Quét QR bằng camera điện thoại';
-    phoneRemoteInfo.innerHTML='<a href="'+remoteUrl+'" target="_blank">Bấm đây nếu không quét được QR</a>';
-    /* Khởi động MQTT — setPhoneStatus sẽ được gọi bên trong initMqtt */
-    initMqtt();
-    showToast('📱 QR đã hiển thị — Channel: '+channelId);
-  } else {
-    showToast('QR đã ẩn');
-  }
+    phoneConnStatus.style.display='';phoneConnStatus.textContent='⏳ Chờ kết nối';phoneConnStatus.className='waiting';
+    phoneRemoteInfo.innerHTML='<a href="'+remoteUrl+'" target="_blank">Bấm đây để mở Remote</a>';
+    showToast('📱 QR đã hiển thị');
+  } else showToast('QR đã ẩn');
 }
 qrBtn.addEventListener('click',showQRPanel);
 
@@ -3269,89 +3150,36 @@ qrBtn.addEventListener('click',showQRPanel);
   document.getElementById('rmFriendInput').addEventListener('keydown',e=>{if(e.key==='Enter')rmAddFriend();});
   renderFriends();
 
-  /* ---- MQTT (remote) ---- */
+  /* ---- MQTT ---- */
   let lastPhaseText='';
   if(typeof mqtt==='undefined'){connEl.textContent='⚠️ Không tải được thư viện kết nối';connEl.className='err';return;}
-  const RM_BROKERS=[
-    'wss://test.mosquitto.org:8081',
-    'wss://broker.emqx.io:8084/mqtt',
-    'wss://broker.hivemq.com:8884/mqtt',
-    'wss://mqtt.eclipseprojects.io:443/mqtt',
-  ];
-  let rmBrokerIdx=0,rmReconnectTimer=null,rmConnected=false;
-
-  function doRmConnect(){
-    /* Hủy timer cũ tránh gọi chồng */
-    if(rmReconnectTimer){clearTimeout(rmReconnectTimer);rmReconnectTimer=null;}
-    if(rmClient){try{rmClient.end(true);}catch(e){}rmClient=null;}
-    rmConnected=false;
-    const broker=RM_BROKERS[rmBrokerIdx%RM_BROKERS.length];
-    connEl.textContent='🔄 Đang kết nối...';connEl.className='';
-    const client=mqtt.connect(broker,{
-      clientId:'remote_'+ch+'_'+Math.random().toString(36).slice(2,6),
-      reconnectPeriod:0,
-      connectTimeout:9000,
-      keepalive:25,
-    });
-    rmClient=client;
-
-    client.on('connect',()=>{
-      if(client!==rmClient)return; /* stale client, bỏ qua */
-      rmConnected=true;
-      rmBrokerIdx=0; /* reset về broker đầu khi thành công */
-      client.subscribe(stateTopic);
-      client.publish(cmdTopic,JSON.stringify({from:'remote',cmd:'request_state'}));
-      connEl.textContent='⏳ Đã kết nối, chờ Desktop...';connEl.className='';
-    });
-
-    client.on('message',(topic,payload)=>{
-      if(client!==rmClient)return;
-      try{
-        const d=JSON.parse(payload.toString());if(d.from!=='desktop')return;
-        connEl.textContent='✅ Đã kết nối Desktop';connEl.className='ok';
-        if(d.theme){
-          THEMES.forEach(t=>document.body.classList.remove('theme-'+t));
-          if(d.theme!=='default') document.body.classList.add('theme-'+d.theme);
-          document.querySelectorAll('.rm-tsw').forEach(s=>s.classList.toggle('active',s.dataset.theme===d.theme));
-        }
-        if(d.timer!==undefined)timerEl.textContent=d.timer;
-        if(d.task!==undefined)taskEl.textContent=d.task||'';
-        if(d.phase!==undefined){
-          phaseEl.textContent=d.phase||'';
-          if(lastPhaseText.includes('FOCUS')&&d.phase.includes('BREAK')){
-            rmLogFocusSession(lsGet('focus_duration',25));
-          }
-          lastPhaseText=d.phase||'';
-        }
-        if(d.progress!==undefined)pfEl.style.width=d.progress+'%';
-        if(d.tasks)rmRenderTasks(d.tasks);
-        if(d.focusDuration)lsSet('focus_duration',d.focusDuration);
-      }catch(ex){}
-    });
-
-    client.on('error',()=>{
-      if(client!==rmClient)return;
-      rmBrokerIdx++;
-      connEl.textContent='⚠️ Thử broker khác...';connEl.className='err';
-      rmReconnectTimer=setTimeout(doRmConnect,2000);
-    });
-
-    client.on('close',()=>{
-      if(client!==rmClient)return;
-      if(rmConnected){
-        /* Đã từng connect OK → reconnect cùng broker */
-        connEl.textContent='🔄 Mất kết nối, reconnect...';connEl.className='err';
-        rmReconnectTimer=setTimeout(doRmConnect,3000);
-      } else {
-        /* Chưa connect được → thử broker tiếp theo */
-        rmBrokerIdx++;
-        connEl.textContent='⚠️ Thử broker khác...';connEl.className='err';
-        rmReconnectTimer=setTimeout(doRmConnect,1500);
+  rmClient=mqtt.connect(MQTT_BROKER,{clientId:'remote_'+ch+'_'+Math.random().toString(36).slice(2,6),reconnectPeriod:3000});
+  rmClient.on('connect',()=>{rmClient.subscribe(stateTopic);rmClient.publish(cmdTopic,JSON.stringify({from:'remote',cmd:'request_state'}));connEl.textContent='⏳ Đã kết nối, đợi Desktop...';connEl.className='';});
+  rmClient.on('message',(topic,payload)=>{
+    try{
+      const d=JSON.parse(payload.toString());if(d.from!=='desktop')return;
+      connEl.textContent='✅ Đã kết nối Desktop';connEl.className='ok';
+      if(d.theme){
+        THEMES.forEach(t=>document.body.classList.remove('theme-'+t));
+        if(d.theme!=='default') document.body.classList.add('theme-'+d.theme);
+        document.querySelectorAll('.rm-tsw').forEach(s=>s.classList.toggle('active',s.dataset.theme===d.theme));
       }
-    });
-  }
-
-  doRmConnect();
+      if(d.timer!==undefined)timerEl.textContent=d.timer;
+      if(d.task!==undefined)taskEl.textContent=d.task||'';
+      if(d.phase!==undefined){
+        phaseEl.textContent=d.phase||'';
+        /* detect session complete: phase flipped from focus→break */
+        if(lastPhaseText.includes('FOCUS')&&d.phase.includes('BREAK')){
+          rmLogFocusSession(lsGet('focus_duration',25));
+        }
+        lastPhaseText=d.phase||'';
+      }
+      if(d.progress!==undefined)pfEl.style.width=d.progress+'%';
+      if(d.tasks)rmRenderTasks(d.tasks);
+      if(d.focusDuration)lsSet('focus_duration',d.focusDuration);
+    }catch(ex){}
+  });
+  rmClient.on('error',()=>{connEl.textContent='⚠️ Lỗi kết nối';connEl.className='err';});
   setInterval(()=>{if(rmClient&&rmClient.connected)rmClient.publish(cmdTopic,JSON.stringify({from:'remote',cmd:'ping'}));},4000);
 })();
 
