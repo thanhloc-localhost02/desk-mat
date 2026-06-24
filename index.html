@@ -2743,7 +2743,9 @@ phoneZone.addEventListener('click',(e)=>{
 /* MQTT / QR */
 const qrImg=document.getElementById('qrImg'),qrStatus=document.getElementById('qrStatus'),phoneConnStatus=document.getElementById('phoneConnStatus'),phoneRemoteInfo=document.getElementById('phoneRemoteInfo'),qrBtn=document.getElementById('qrBtn');
 let mqttClient=null,qrMode=false;
-const channelId='deskmat_'+Math.random().toString(36).slice(2,8);
+/* FIX: channelId persist qua refresh — điện thoại không bị mất kết nối khi desktop refresh */
+let channelId=sessionStorage.getItem('deskmat_ch');
+if(!channelId){channelId='deskmat_'+Math.random().toString(36).slice(2,8);sessionStorage.setItem('deskmat_ch',channelId);}
 const MQTT_BROKER='wss://broker.emqx.io:8084/mqtt';
 const TOPIC_CMD='deskmat3v/'+channelId+'/cmd';
 const TOPIC_STATE='deskmat3v/'+channelId+'/state';
@@ -2831,6 +2833,9 @@ function broadcastState(){
   mqttClient.publish(TOPIC_STATE,JSON.stringify({from:'desktop',timer:focusRunning?formatTime(focusSeconds):timerDisplay.textContent,task:getCurrentTaskName(),phase:focusRunning?focusPhase.textContent:'',progress:pct,tasks,theme:currentTheme}));
 }
 setInterval(broadcastState,2000);
+
+/* FIX: Auto-init MQTT khi load — không cần bấm QR trước */
+if(!isLocalFile()) setTimeout(initMqtt,500);
 
 function showQRPanel(){
   qrMode=!qrMode;
@@ -2990,11 +2995,14 @@ qrBtn.addEventListener('click',showQRPanel);
     }
     el.parentElement&&el.parentElement.appendChild(cal);
   }
-  rmUpdateStreak();
+  /* ---- PROFILE (declared early: needed by rmUpdateStreak -> rmUpdatePoints -> leaderboard below) ---- */
+  const AVATARS=['🧑','👩','🧑‍💻','👨‍🎓','🧑‍🎨','👩‍🔬','🦊','🐼','🐸','🦋','🌟','🔥'];
+  let profile=lsGet('profile',{name:'Bạn',avatar:'🧑'});
 
   /* ---- FOCUS STATS ---- */
   let focusMinToday=lsGet('focusMin_'+today(),0);
   let sessionsToday=lsGet('sessions_'+today(),0);
+  rmUpdateStreak();
   function rmLogFocusSession(mins){
     focusMinToday+=mins; sessionsToday++;
     lsSet('focusMin_'+today(),focusMinToday);
@@ -3062,8 +3070,6 @@ qrBtn.addEventListener('click',showQRPanel);
   }
 
   /* ---- PROFILE ---- */
-  const AVATARS=['🧑','👩','🧑‍💻','👨‍🎓','🧑‍🎨','👩‍🔬','🦊','🐼','🐸','🦋','🌟','🔥'];
-  let profile=lsGet('profile',{name:'Bạn',avatar:'🧑'});
   function renderProfile(){
     document.getElementById('rmAvatarDisplay').textContent=profile.avatar;
     document.getElementById('rmUsernameDisplay').textContent=profile.name;
