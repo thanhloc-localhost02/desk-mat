@@ -772,6 +772,7 @@ body.theme-ios16light .note .note-meta input{background:rgba(0,0,0,.06);}
   transition:border-radius .3s var(--ease-smooth),transform .2s var(--ease-spring),box-shadow .25s,border-color .25s,z-index 0s;
   position:relative;overflow:hidden;
   contain:layout style paint;
+  isolation:isolate;
 }
 body.theme-lgdark .panel,body.theme-lglight .panel{
   background:transparent;
@@ -943,6 +944,7 @@ body.theme-lgdark .quote-text,body.theme-lglight .quote-text{font-style:normal;f
   backdrop-filter:blur(var(--glass-blur));-webkit-backdrop-filter:blur(var(--glass-blur));
   box-shadow:0 1px 0 var(--glass-highlight) inset,0 4px 16px var(--shadow);
   transition:border-radius .4s var(--ease-smooth);
+  isolation:isolate;
 }
 body.theme-lgdark .wide-panel,body.theme-lglight .wide-panel{
   background:transparent;
@@ -2297,7 +2299,7 @@ function showNoteTransferPopup(noteText){
   if(sub) sub.textContent='Từ điện thoại 📱';
   playNotificationDrop();
   noteTransferPopup.classList.add('show');
-  setTimeout(function(){noteTransferPopup.classList.remove('show');},1000);
+  setTimeout(function(){noteTransferPopup.classList.remove('show');},1300);
 }
 
 /* ============================================================ CORE STATE */
@@ -2926,8 +2928,7 @@ function handleRemoteCommand(cmd){
         setTimeout(function(){note.classList.remove('note-fly-in');},600);
         syncLGCards();
       }
-    },950);
-    showToast('📱 Note mới: '+short);
+    },1235);
   }
 }
 function broadcastState(){
@@ -3300,7 +3301,7 @@ function showStartupPopup(){
   setTimeout(()=>{
     startupPopup.classList.remove('show');
     startupPopup.classList.add('hide');
-  },1200);
+  },1500);
 }
 function setSystemPower(on){
   systemOn=on;
